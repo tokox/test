@@ -1,0 +1,90 @@
+name: Tasklist Update
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *'
+
+permissions:
+  contents: write
+
+jobs:
+  tasklist_update:
+    name: Update tasklist
+    runs-on: ubuntu-latest
+    container: fedora:latest
+
+    steps:
+      - name: Install git
+        run: dnf install -y git && dnf upgrade -y git
+
+      - name: Setup dnf
+        run: sudo dnf install -y 'dnf-command(config-manager)' && sudo dnf upgrade -y 'dnf-command(config-manager)'
+
+      - name: Add github-cli repo
+        run: dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
+
+      - name: Install github-cli
+        run: dnf install -y gh && dnf upgrade -y gh
+
+      - name: Setup github-cli
+        run: gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Setup git with github-cli
+        run: gh auth setup-git
+
+      - name: Install python3
+        run: dnf install -y python3 && dnf upgrade -y python3
+
+      - name: Install pip3
+        run: dnf install -y python3-pip && dnf upgrade -y python3-pip
+        
+      - name: Clone repository
+        run: gh repo clone ${{ github.repository }}
+
+      - name: Change directory
+        run: cd ${${{ github.repository }}#${{ github.repository_owner }}/}
+
+      - name: Check pr
+        id: pr_check
+        run: |
+          tmp="$(mktemp)"
+          gh pr list -s open -H tasklist-update -l auto-tasklist-update --json number --jq .[].number > $tmp
+          cnt="$(wc -l $tmp | cut -f1 -d' ')"
+          if [[ $cnt -gt 1 ]]; then
+            exit 1
+          elif [[ $cnt -eq 1 ]]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create new branch
+        if: ${{ ! steps.pr_check.outputs.exists }}
+        run: |
+          git checkout -B tasklist-update
+          git push tasklist-update -f
+      
+      - name: Checkout tasklist branch
+        if: ${{ steps.pr_check.outputs.exists }}
+        run: git checkout tasklist-update
+      
+      - name: Run update script
+        run: python3 scripts/update_tasklist
+
+      - name: Stop if no changes
+        run: |
+          if git diff --exit-code; then
+            gh run cancel ${{ github.run_id }}
+            gh run watch ${{ github.run_id }}
+          fi
+
+      - name: Commit changes
+        run: |
+          git add .
+          git commit -m "tasklist update $(date '+%Y-%m-%d %H:%M' -u)"
+          git push tasklist-update
+
+      - name: Create PR
+        if: ${{ ! steps.pr_check.outputs.exists }}
+        run: gh pr create -B main -H tasklist-update -l auto-tasklist-update -a tokox -r tokox -t "Automatic tasklist update" -b "This is an automatic tasklist update by the tasklist-update workflow."
