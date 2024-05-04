@@ -48,6 +48,7 @@ jobs:
       - name: Check pr
         id: pr_check
         run: |
+          pwd
           tmp="$(mktemp)"
           gh pr list -s open -H tasklist-update -l auto-tasklist-update --json number --jq .[].number > $tmp
           cnt="$(wc -l $tmp | cut -f1 -d' ')"
