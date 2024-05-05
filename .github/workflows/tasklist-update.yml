@@ -60,13 +60,13 @@ jobs:
           fi
 
       - name: Create new branch
-        if: ${{ steps.pr_check.outputs.exists == "false" }}
+        if: ${{ ! fromJSON(steps.pr_check.outputs.exists) }}
         run: |
           git checkout -B tasklist-update
           git push tasklist-update -f
       
       - name: Checkout tasklist branch
-        if: ${{ steps.pr_check.outputs.exists == "true" }}
+        if: ${{ fromJSON(steps.pr_check.outputs.exists) }}
         run: git checkout tasklist-update
       
       - name: Run update script
