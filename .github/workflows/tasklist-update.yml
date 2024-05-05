@@ -15,35 +15,28 @@ jobs:
     container: fedora:latest
 
     steps:
-      - name: Install git
-        run: dnf install -y git && dnf upgrade -y git
+      - name: Get current date
+        run: echo "DATE=$(date -u +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
 
-      - name: Setup dnf
-        run: sudo dnf install -y 'dnf-command(config-manager)' && sudo dnf upgrade -y 'dnf-command(config-manager)'
+      - name: Install dnf config-manager
+        run: dnf install -y 'dnf-command(config-manager)'
 
       - name: Add github-cli repo
         run: dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
 
-      - name: Install github-cli
-        run: dnf install -y gh && dnf upgrade -y gh
+      - name: Install dependencies
+        run: dnf install -y git python3 gh
 
       - name: Setup github-cli
-        run: gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
-
-      - name: Setup git with github-cli
-        run: gh auth setup-git
-
-      - name: Install python3
-        run: dnf install -y python3 && dnf upgrade -y python3
-
-      - name: Install pip3
-        run: dnf install -y python3-pip && dnf upgrade -y python3-pip
-        
-      - name: Checkout code
-        uses: actions/checkout@v4
+        run:  |
+          gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
+          gh auth setup-git
 
       - name: Weird git config (otherwise it refuses to cooperate)
         run: git config --global --add safe.directory /__w/test/test
+
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Check pr
         id: pr_check
@@ -72,19 +65,21 @@ jobs:
       - name: Run update script
         run: python3 scripts/update_tasklist
 
-      - name: Stop if no changes
-        run: |
-          if git diff --exit-code; then
-            gh run cancel ${{ github.run_id }}
-            gh run watch ${{ github.run_id }}
-          fi
+      - name: Get bot details
+        uses: raven-actions/bot-details@v1.0.1
+        id: bot_details
 
       - name: Commit changes
-        run: |
-          git add .
-          git commit -m "tasklist update $(date '+%Y-%m-%d %H:%M' -u)"
-          git push tasklist-update
+        id: commmit_changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "tasklist update ${{ env.DATE }}"
+          branch: tasklist-update
+          file_pattern: "README.md"
+          commit_user_name: ${{ steps.bot_details.outputs.name }}
+          commit_user_email: ${{ steps.bot_details.outputs.email }}
+          commit_author: ${{ steps.bot_details.outputs.name-email }}
 
       - name: Create PR
-        if: ${{ ! steps.pr_check.outputs.exists }}
+        if: ${{ (! fromJSON(steps.pr_check.outputs.exists)) && fromJSON(steps.commmit_changes.outputs.changes_detected) }}
         run: gh pr create -B main -H tasklist-update -l auto-tasklist-update -a tokox -r tokox -t "Automatic tasklist update" -b "This is an automatic tasklist update by the tasklist-update workflow."
