@@ -42,7 +42,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - run: git config --global --add safe.directory /__w/test/test
+      - name: Weird git config (otherwise it refuses to cooperate)
+        run: git config --global --add safe.directory /__w/test/test
 
       - name: Check pr
         id: pr_check
@@ -59,13 +60,13 @@ jobs:
           fi
 
       - name: Create new branch
-        if: ${{ ! steps.pr_check.outputs.exists }}
+        if: ${{ steps.pr_check.outputs.exists == "false" }}
         run: |
           git checkout -B tasklist-update
           git push tasklist-update -f
       
       - name: Checkout tasklist branch
-        if: ${{ steps.pr_check.outputs.exists }}
+        if: ${{ steps.pr_check.outputs.exists == "true" }}
         run: git checkout tasklist-update
       
       - name: Run update script
