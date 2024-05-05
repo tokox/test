@@ -63,7 +63,7 @@ jobs:
         if: ${{ ! fromJSON(steps.pr_check.outputs.exists) }}
         run: |
           git checkout -B tasklist-update
-          git push tasklist-update -f
+          git push -f
       
       - name: Checkout tasklist branch
         if: ${{ fromJSON(steps.pr_check.outputs.exists) }}
