@@ -39,20 +39,12 @@ jobs:
       - name: Install pip3
         run: dnf install -y python3-pip && dnf upgrade -y python3-pip
         
-      - name: Clone repository
-        run: gh repo clone ${{ github.repository }}
-
-      - name: Change directory
-        run: |
-          cd $(echo ${{ github.repository }} | sed -e s/^${{ github.repository_owner }}\\///)
-          pwd
-          ls -alR
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Check pr
         id: pr_check
         run: |
-          pwd
-          ls -alR
           tmp="$(mktemp)"
           gh pr list -s open -H tasklist-update -l auto-tasklist-update --json number --jq .[].number > $tmp
           cnt="$(wc -l $tmp | cut -f1 -d' ')"
