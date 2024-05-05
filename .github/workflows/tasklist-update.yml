@@ -43,7 +43,10 @@ jobs:
         run: gh repo clone ${{ github.repository }}
 
       - name: Change directory
-        run: cd $(echo ${{ github.repository }} | sed -e s/^${{ github.repository_owner }}\\///)
+        run: |
+          cd $(echo ${{ github.repository }} | sed -e s/^${{ github.repository_owner }}\\///)
+          pwd
+          ls -alR
 
       - name: Check pr
         id: pr_check
