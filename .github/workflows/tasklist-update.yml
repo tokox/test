@@ -16,26 +16,20 @@ jobs:
     container: fedora:latest
 
     steps:
-      - run: chown -R $USER:$USER /__w
-      - name: Get current date
+      - name: Setup environment
         run: echo "DATE=$(date -u +'%Y-%m-%d %H:%M')" >> $GITHUB_ENV
 
-      - name: Install dnf config-manager
-        run: dnf install -y 'dnf-command(config-manager)'
-
-      - name: Add github-cli repo
-        run: dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
-
       - name: Install dependencies
-        run: dnf install -y git python3 gh
+        run: |
+          dnf install -y 'dnf-command(config-manager)'
+          dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
+          dnf install -y git python3 gh
 
-      - name: Setup github-cli
+      - name: Setup github-cli and git
         run:  |
           gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
           gh auth setup-git
-
-      # - name: Weird git config (otherwise it refuses to cooperate)
-      #   run: git config --global --add safe.directory /__w/test/test
+          git config --global --add safe.directory /__w/test/test
 
       - name: Checkout code
         uses: actions/checkout@v4
