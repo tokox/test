@@ -33,11 +33,12 @@ jobs:
 
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Check PR
         id: check_pr
         run: |
-          git branch -av
           tmp="$(mktemp)"
           gh pr list -s open -H tasklist-update -l auto-tasklist-update --json number --jq .[].number > $tmp
           cnt="$(wc -l $tmp | cut -f1 -d' ')"
@@ -49,7 +50,7 @@ jobs:
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Create new branch
+      - name: Create tasklist branch
         if: ${{ ! fromJSON(steps.check_pr.outputs.exists) }}
         run: |
           git checkout -B tasklist-update
@@ -57,9 +58,7 @@ jobs:
       
       - name: Checkout tasklist branch
         if: ${{ fromJSON(steps.check_pr.outputs.exists) }}
-        run: |
-          git fetch origin tasklist-update
-          git checkout tasklist-update
+        run: git checkout tasklist-update
       
       - name: Run update
         id: update
