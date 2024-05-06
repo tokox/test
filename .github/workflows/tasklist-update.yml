@@ -82,10 +82,10 @@ jobs:
           delete-branch: true
           base: main
           title: "Automatic tasklist update -> ${{ env.DATE }}"
-          body: "This is an automatic tasklist update by the tasklist-update workflow.\nSummary:\n - Created 1 tasks\n - Updated 0 tasks\n"
+          body: "This is an automatic tasklist update by the tasklist-update workflow.\nSummary:\n - Created ${{ steps.update.outputs.created }} tasks\n - Updated ${{ steps.update.outputs.updated }} tasks\n"
           labels: auto-tasklist-update
           assignees: tokox
           reviewers: tokox
       
       - name: Print result
-        run: echo "PR #${{ steps.create_pr.outputs.pull-request-number }} was ${{ steps.create_pr.outputs.pull-request-operation }} at ${{ steps.create_pr.outputs.pull-request-url }}"
+        run: echo "PR \#${{ steps.create_pr.outputs.pull-request-number }} was ${{ steps.create_pr.outputs.pull-request-operation }} at ${{ steps.create_pr.outputs.pull-request-url }}"
