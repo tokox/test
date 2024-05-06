@@ -14,11 +14,9 @@ jobs:
     name: Update tasklist
     runs-on: ubuntu-latest
     container: fedora:latest
-    
 
     steps:
-      - run: id -u
-      - run: ls -la
+      - run: chown -R $USER:$USER /__w
       - name: Get current date
         run: echo "DATE=$(date -u +'%Y-%m-%d %H:%M')" >> $GITHUB_ENV
 
