@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Get current date
-        run: echo "DATE=$(date -u +'%Y-%m-%d %H:%M:%S')" >> $GITHUB_ENV
+        run: echo "DATE=$(date -u +'%Y-%m-%d %H:%M')" >> $GITHUB_ENV
 
       - name: Install dnf config-manager
         run: dnf install -y 'dnf-command(config-manager)'
@@ -66,20 +66,29 @@ jobs:
         run: python3 scripts/update_tasklist
 
       - name: Get bot details
-        uses: raven-actions/bot-details@v1.0.1
         id: bot_details
-
-      - name: Commit changes
-        id: commmit_changes
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "tasklist update ${{ env.DATE }}"
-          branch: tasklist-update
-          file_pattern: "README.md"
-          commit_user_name: ${{ steps.bot_details.outputs.name }}
-          commit_user_email: ${{ steps.bot_details.outputs.email }}
-          commit_author: ${{ steps.bot_details.outputs.name-email }}
+        uses: raven-actions/bot-details@v1.0.1
 
       - name: Create PR
-        if: ${{ (! fromJSON(steps.pr_check.outputs.exists)) && fromJSON(steps.commmit_changes.outputs.changes_detected) }}
-        run: gh pr create -B main -H tasklist-update -l auto-tasklist-update -a tokox -r tokox -t "Automatic tasklist update" -b "This is an automatic tasklist update by the tasklist-update workflow."
+        id: create_pr
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          add-paths: README.md
+          commit-message: "tasklist update -> ${{ env.DATE }}"
+          committer: ${{ steps.bot_details.outputs.name-email }}
+          author: ${{ steps.bot_details.outputs.name-email }}
+          branch: tasklist-update
+          delete-branch: true
+          base: main
+          title: "Automatic tasklist update -> ${{ env.DATE }}"
+          body: "This is an automatic tasklist update by the tasklist-update workflow."
+          labels: auto-tasklist-update
+          assignees: tokox
+          reviewers: tokox
+      
+      - name: Print result
+        run: |
+          echo "PR was ${{ steps.create_pr.outputs.pull-request-operation }}"
+          echo "PR #${{ steps.create_pr.outputs.pull-request-number }}"
+          echo "PR URL: ${{ steps.create_pr.outputs.pull-request-url }}"
