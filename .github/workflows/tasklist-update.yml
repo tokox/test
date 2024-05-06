@@ -43,7 +43,7 @@ jobs:
         id: pr_check
         run: |
           tmp="$(mktemp)"
-          gh pr list -s open -H tasklist-update -l auto-tasklist-update --json number --jq .[].number > $tmp
+          gh pr list -s open -H tasklist-update -l auto-tasklist-update --json number --jq .[].number -R ${{ github.repository }} > $tmp
           cnt="$(wc -l $tmp | cut -f1 -d' ')"
           if [[ $cnt -gt 1 ]]; then
             exit 1
