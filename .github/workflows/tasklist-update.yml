@@ -25,7 +25,7 @@ jobs:
           dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
           dnf install -y git python3 gh
 
-      - name: Setup github-cli and git
+      - name: Setup tools
         run:  |
           gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
           gh auth setup-git
@@ -34,9 +34,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Check pr
-        id: pr_check
+      - name: Check PR
+        id: check_pr
         run: |
+          git branch -av
           tmp="$(mktemp)"
           gh pr list -s open -H tasklist-update -l auto-tasklist-update --json number --jq .[].number > $tmp
           cnt="$(wc -l $tmp | cut -f1 -d' ')"
@@ -49,16 +50,19 @@ jobs:
           fi
 
       - name: Create new branch
-        if: ${{ ! fromJSON(steps.pr_check.outputs.exists) }}
+        if: ${{ ! fromJSON(steps.check_pr.outputs.exists) }}
         run: |
           git checkout -B tasklist-update
           git push -u origin tasklist-update -f
       
       - name: Checkout tasklist branch
-        if: ${{ fromJSON(steps.pr_check.outputs.exists) }}
-        run: git checkout tasklist-update
+        if: ${{ fromJSON(steps.check_pr.outputs.exists) }}
+        run: |
+          git fetch origin tasklist-update
+          git checkout tasklist-update
       
-      - name: Run update script
+      - name: Run update
+        id: update
         run: python3 scripts/update_tasklist
 
       - name: Get bot details
@@ -78,13 +82,10 @@ jobs:
           delete-branch: true
           base: main
           title: "Automatic tasklist update -> ${{ env.DATE }}"
-          body: "This is an automatic tasklist update by the tasklist-update workflow."
+          body: "This is an automatic tasklist update by the tasklist-update workflow.\nSummary:\n - Created 1 tasks\n - Updated 0 tasks\n"
           labels: auto-tasklist-update
           assignees: tokox
           reviewers: tokox
       
       - name: Print result
-        run: |
-          echo "PR was ${{ steps.create_pr.outputs.pull-request-operation }}"
-          echo "PR #${{ steps.create_pr.outputs.pull-request-number }}"
-          echo "PR URL: ${{ steps.create_pr.outputs.pull-request-url }}"
+        run: echo "PR #${{ steps.create_pr.outputs.pull-request-number }} was ${{ steps.create_pr.outputs.pull-request-operation }} at ${{ steps.create_pr.outputs.pull-request-url }}"
