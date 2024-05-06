@@ -18,7 +18,7 @@ jobs:
 
     steps:
       - run: id -u
-      - run: ls -l
+      - run: ls -la
       - name: Get current date
         run: echo "DATE=$(date -u +'%Y-%m-%d %H:%M')" >> $GITHUB_ENV
 
@@ -46,7 +46,7 @@ jobs:
         id: pr_check
         run: |
           tmp="$(mktemp)"
-          gh pr list -s open -H tasklist-update -l auto-tasklist-update --json number --jq .[].number -R ${{ github.repository }} > $tmp
+          gh pr list -s open -H tasklist-update -l auto-tasklist-update --json number --jq .[].number > $tmp
           cnt="$(wc -l $tmp | cut -f1 -d' ')"
           if [[ $cnt -gt 1 ]]; then
             exit 1
