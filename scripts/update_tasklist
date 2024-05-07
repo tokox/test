@@ -1,2 +1,4 @@
 with open("README.md", "a") as f:
 	f.write("blah\n")
+print("message,message")
+print("more messages")

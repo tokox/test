@@ -25,24 +25,24 @@ jobs:
           bot-slug-name: github-actions
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install dependencies  
+      - name: Install dependencies
         run: |
           dnf install -y 'dnf-command(config-manager)'
           dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
           dnf install -y git python3 gh
 
-      - name: Setup tools    
+      - name: Setup tools
         run:  |
           gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
           gh auth setup-git
           git config --global --add safe.directory /__w/test/test
 
-      - name: Checkout code    
+      - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Check PR    
+      - name: Check PR
         id: check
         run: |
           tmp="$(mktemp)"
@@ -50,26 +50,29 @@ jobs:
           cnt="$(wc -l $tmp | cut -f1 -d' ')"
           if [[ $cnt -gt 1 ]]; then
             exit 1
-          elif [[ $cnt -eq 1 ]]; then  
+          elif [[ $cnt -eq 1 ]]; then
             echo "exists=true" >> $GITHUB_OUTPUT
-          else  
+          else
             echo "exists=false" >> $GITHUB_OUTPUT
-          fi  
+          fi
 
-      - name: Create tasklist branch    
+      - name: Create tasklist branch
         if: ${{ ! fromJSON(steps.check.outputs.exists) }}
         run: |
           git checkout -B tasklist-update
           git push -u origin tasklist-update -f
-      
-      - name: Checkout tasklist branch    
+
+      - name: Checkout tasklist branch
         if: ${{ fromJSON(steps.check.outputs.exists) }}
         run: git checkout tasklist-update
-      
-      - name: Run update  
+
+      - name: Run update
         id: update
-        run: python3 scripts/update_tasklist
-  
+        run: |
+          echo "message<<EOF" >> $GITHUB_OUTPUT
+          python3 scripts/update_tasklist >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Commit changes
         id: commit
         uses: stefanzweifel/git-auto-commit-action@v5
