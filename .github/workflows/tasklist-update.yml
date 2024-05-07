@@ -79,7 +79,7 @@ jobs:
         with:
           branch: tasklist-update
           file_pattern: README.md
-          commit_message: "tasklist update -> ${{ env.DATE }}\n\nupdated: ${{ steps.update.outputs.updated }}\nadded: ${{ steps.update.outputs.added }}\ndeleted: ${{ steps.update.outputs.deleted }}\n"
+          commit_message: "tasklist update -> ${{ env.DATE }}\n\n${{ steps.update.outputs.message }}"
           commit_user_name: ${{ env.BOT_NAME }}
           commit_user_email: ${{ env.BOT_EMAIL }}
           commit_author: ${{ env.BOT_NAME_EMAIL }}
