@@ -19,72 +19,78 @@ jobs:
       - name: Setup environment
         run: echo "DATE=$(date -u +'%Y-%m-%d %H:%M')" >> $GITHUB_ENV
 
-      - name: Install dependencies
+      - name: Get bot details
+        uses: raven-actions/bot-details@v1.0.1
+        with:
+          bot-slug-name: github-actions
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install dependencies  
         run: |
           dnf install -y 'dnf-command(config-manager)'
           dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
           dnf install -y git python3 gh
 
-      - name: Setup tools
+      - name: Setup tools    
         run:  |
           gh auth login --with-token <<< "${{ secrets.GITHUB_TOKEN }}"
           gh auth setup-git
           git config --global --add safe.directory /__w/test/test
 
-      - name: Checkout code
+      - name: Checkout code    
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Check PR
-        id: check_pr
+      - name: Check PR    
+        id: check
         run: |
           tmp="$(mktemp)"
           gh pr list -s open -H tasklist-update -l auto-tasklist-update --json number --jq .[].number > $tmp
           cnt="$(wc -l $tmp | cut -f1 -d' ')"
           if [[ $cnt -gt 1 ]]; then
             exit 1
-          elif [[ $cnt -eq 1 ]]; then
+          elif [[ $cnt -eq 1 ]]; then  
             echo "exists=true" >> $GITHUB_OUTPUT
-          else
+          else  
             echo "exists=false" >> $GITHUB_OUTPUT
-          fi
+          fi  
 
-      - name: Create tasklist branch
-        if: ${{ ! fromJSON(steps.check_pr.outputs.exists) }}
+      - name: Create tasklist branch    
+        if: ${{ ! fromJSON(steps.check.outputs.exists) }}
         run: |
           git checkout -B tasklist-update
           git push -u origin tasklist-update -f
       
-      - name: Checkout tasklist branch
-        if: ${{ fromJSON(steps.check_pr.outputs.exists) }}
+      - name: Checkout tasklist branch    
+        if: ${{ fromJSON(steps.check.outputs.exists) }}
         run: git checkout tasklist-update
       
-      - name: Run update
+      - name: Run update  
         id: update
         run: python3 scripts/update_tasklist
-
-      - name: Get bot details
-        id: bot_details
-        uses: raven-actions/bot-details@v1.0.1
+  
+      - name: Commit changes
+        id: commit
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          branch: tasklist-update
+          file_pattern: README.md
+          commit_message: "tasklist update -> ${{ env.DATE }}\n\nupdated: ${{ steps.update.outputs.updated }}\nadded: ${{ steps.update.outputs.added }}\ndeleted: ${{ steps.update.outputs.deleted }}\n"
+          commit_user_name: ${{ env.BOT_NAME }}
+          commit_user_email: ${{ env.BOT_EMAIL }}
+          commit_author: ${{ env.BOT_NAME_EMAIL }}
 
       - name: Create PR
-        id: create_pr
-        uses: peter-evans/create-pull-request@v6
+        id: create
+        if: ${{ (! fromJSON(steps.check.outputs.exists)) && fromJSON(steps.commit.outputs.changes_detected) }}
+        uses: devops-infra/action-pull-request@v0.5.5
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          add-paths: README.md
-          commit-message: "tasklist update -> ${{ env.DATE }}\n\nupdated: ${{ steps.update.outputs.updated }}\nadded: ${{ steps.update.outputs.added }}\ndeleted: ${{ steps.update.outputs.deleted }}\n"
-          committer: ${{ steps.bot_details.outputs.name-email }}
-          author: ${{ steps.bot_details.outputs.name-email }}
-          branch: tasklist-update
-          delete-branch: true
-          base: main
-          title: "Automatic tasklist update -> ${{ env.DATE }}"
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          source_branch: tasklist-update
+          target_branch: main
+          title: "Automatic tasklist update"
           body: "This is an automatic tasklist update by the tasklist-update workflow."
-          labels: auto-tasklist-update
-          assignees: tokox
-          reviewers: tokox
-      
-      - name: Print result
-        run: echo "PR \#${{ steps.create_pr.outputs.pull-request-number }} was ${{ steps.create_pr.outputs.pull-request-operation }} at ${{ steps.create_pr.outputs.pull-request-url }}"
+          reviewer: tokox
+          assignee: tokox
+          label: auto-tasklist-update
